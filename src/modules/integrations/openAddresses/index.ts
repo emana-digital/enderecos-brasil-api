@@ -1,0 +1,1 @@
+export { OpenAddressesIntegration } from "./openAddresses";

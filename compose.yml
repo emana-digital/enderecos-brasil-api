@@ -9,9 +9,9 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - postgres
+      - database
 
-  postgres:
+  database:
     image: postgres:17
     container_name: enderecos_brasil_db
     environment:

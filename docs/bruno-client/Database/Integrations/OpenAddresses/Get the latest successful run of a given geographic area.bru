@@ -1,0 +1,23 @@
+meta {
+  name: Get the latest successful run of a given geographic area
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{openAddressesApi}}/data?source=br/
+  body: none
+  auth: none
+}
+
+params:query {
+  source: br/
+  ~layer: 
+  ~validated: 
+  ~name: 
+  ~before: 
+  ~after: 
+  ~point: 
+  ~fabric: 
+  ~map: 
+}

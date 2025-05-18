@@ -4,6 +4,7 @@
   "module": "src/index.js",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
+    "db:start": "docker compose up database -d",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
