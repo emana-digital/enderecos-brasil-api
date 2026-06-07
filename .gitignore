@@ -1,5 +1,9 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# generated database (gerado por database/seed/database-generation.ts)
+/database/*.sqlite
+/database/*.sqlite-*
+
 # dependencies
 /node_modules
 /.pnp

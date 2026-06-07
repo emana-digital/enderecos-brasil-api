@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "db:start": "docker compose up database -d",
+    "db:seed:generate": "bun run database/seed/database-generation.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
