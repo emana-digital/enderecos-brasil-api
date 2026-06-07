@@ -1,0 +1,60 @@
+# Deploy de produção baseado APENAS em tags.
+#
+# Fluxo: você dá push numa tag `v*` (ex.: `git tag v1.0.0 && git push origin v1.0.0`)
+#   -> esta Action conecta no VPS via SSH
+#   -> no VPS: atualiza o checkout para a tag, instala deps, faz build e
+#      reinicia o serviço no pm2 (ver scripts/deploy.sh).
+#
+# O Bun roda nativamente no VPS escutando só em 127.0.0.1; o Caddy faz o
+# reverse-proxy com SSL para api.enderecosbrasil.emana.digital.
+#
+# Secrets necessários (Settings > Secrets and variables > Actions):
+#   SSH_HOST  -> IP/hostname do VPS
+#   SSH_USER  -> usuário SSH (dono de /var/www/api.enderecosbrasil.emana.digital)
+#   SSH_KEY   -> chave PRIVADA SSH (conteúdo completo, ex.: ~/.ssh/id_ed25519)
+#   SSH_PORT  -> porta SSH (opcional; default 22)
+# Setup único do VPS em docs/deploy.md.
+
+name: Deploy
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Um deploy de cada vez. Se duas tags forem empurradas em sequência, a segunda
+# espera a primeira terminar (não cancela no meio de um deploy).
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy no VPS (tag ${{ github.ref_name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Não precisamos de checkout no runner: o build acontece no VPS.
+      # O runner só abre o SSH e dispara o deploy remoto.
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0 # dica de hardening: trocar por SHA fixo
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: TAG,PROJECT_DIR
+          # Falha o passo se qualquer comando do script remoto falhar.
+          script_stop: true
+          command_timeout: 12m
+          script: |
+            set -euo pipefail
+            cd "$PROJECT_DIR"
+            echo "==> Atualizando projeto para a tag ${TAG}"
+            git fetch --tags --prune --force origin
+            git checkout --force "refs/tags/${TAG}"
+            # deploy.sh já é a versão da própria tag (deps -> build -> pm2).
+            bash scripts/deploy.sh
+        env:
+          TAG: ${{ github.ref_name }}
+          PROJECT_DIR: /var/www/api.enderecosbrasil.emana.digital

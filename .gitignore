@@ -18,6 +18,9 @@
 
 # production
 /build
+# binário gerado no VPS por `bun build --compile` (scripts/deploy.sh)
+/server
+/server.new
 
 # misc
 .DS_Store

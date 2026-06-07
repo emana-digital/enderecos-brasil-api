@@ -29,6 +29,13 @@ const classifyOrigin = (origin: string | null) => {
 // Health checks são ruído de infra (uptime/load balancer); não logamos.
 const HEALTH_PATHS = new Set(["/", "/health-check"]);
 
+// Em produção o Bun escuta só no loopback (127.0.0.1): quem expõe a API pra
+// internet é o Caddy (reverse-proxy com SSL para api.enderecosbrasil.emana.digital).
+// Em dev mantém o default do Bun (0.0.0.0), facilitando acesso pela rede local.
+// PORT é configurável via env (definido no ecosystem.config.cjs do pm2).
+const PORT = Number(process.env.PORT) || 3000;
+const isProduction = process.env.NODE_ENV === "production";
+
 const app = new Elysia()
   // CORS oficial (@elysiajs/cors). API pública: aceita qualquer origem,
   // somente leitura (GET). Para restringir depois, ver FRONTEND_ORIGIN acima.
@@ -61,7 +68,7 @@ const app = new Elysia()
   .onError(({ request, code }) => {
     requestLog(`${chalk.redBright.bold(code.toString())}`, request);
   })
-  .listen(3000);
+  .listen(isProduction ? { hostname: "127.0.0.1", port: PORT } : PORT);
 
 log(
   `${chalk.greenBright.bold("EnderecosBrasil")} ${chalk.gray(
