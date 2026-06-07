@@ -13,12 +13,21 @@ import { log, requestLog } from "~/utils/log";
 // `origin: FRONTEND_ORIGIN` no cors() para restringir.
 const FRONTEND_ORIGIN = "https://enderecosbrasil.emana.digital";
 
-// Considera "nossa" a origem do front oficial e qualquer localhost (dev),
-// para não poluir o log de origens externas durante o desenvolvimento.
-const isOwnOrigin = (origin: string) =>
-  origin === FRONTEND_ORIGIN ||
-  origin.startsWith("http://localhost") ||
-  origin.startsWith("http://127.0.0.1");
+// Classifica a origem da requisição pra sabermos QUEM está usando a API.
+// `origem externa` (amarelo) é o caso a vigiar: browser de outro site.
+const classifyOrigin = (origin: string | null) => {
+  if (!origin)
+    // Sem header Origin: curl/script/server-to-server ou URL digitada no browser.
+    return { label: "conexão direta", color: chalk.gray };
+  if (origin === FRONTEND_ORIGIN)
+    return { label: "front oficial", color: chalk.greenBright };
+  if (origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1"))
+    return { label: "dev local", color: chalk.blueBright };
+  return { label: "origem externa", color: chalk.yellowBright.bold };
+};
+
+// Health checks são ruído de infra (uptime/load balancer); não logamos.
+const HEALTH_PATHS = new Set(["/", "/health-check"]);
 
 const app = new Elysia()
   // CORS oficial (@elysiajs/cors). API pública: aceita qualquer origem,
@@ -29,35 +38,26 @@ const app = new Elysia()
       methods: ["GET"],
     })
   )
-  // Loga consumidores além do nosso front. O browser manda o header `Origin`
-  // em requisições cross-site; se vier de origem desconhecida, registramos
-  // para decidir se vale restringir o CORS. (Scripts/server-to-server não
-  // enviam Origin e não são afetados por CORS de qualquer forma.)
+  // Loga TODA requisição às APIs de busca (tudo menos health check), com URL
+  // (já inclui a query) + IP, classificada por origem (ver classifyOrigin):
+  // `front oficial` / `dev local` / `conexão direta` / `origem externa`
+  // (amarelo, o caso a vigiar — consumidor além do nosso front).
   .onRequest(({ request, server }) => {
-    const origin = request.headers.get("origin");
+    const { pathname } = new URL(request.url);
+    if (HEALTH_PATHS.has(pathname)) return;
 
-    if (origin && !isOwnOrigin(origin)) {
-      requestLog(
-        `${chalk.yellowBright.bold("origem externa")} | origin: ${chalk.white(
-          origin
-        )}`,
-        request,
-        server
-      );
-    }
+    const origin = request.headers.get("origin");
+    const { label, color } = classifyOrigin(origin);
+
+    requestLog(
+      `${color(label)}${origin ? ` | origin: ${chalk.white(origin)}` : ""}`,
+      request,
+      server
+    );
   })
   .get("/", ({ request }) => healthCheck({ request }))
   .get("/health-check", ({ request }) => healthCheck({ request }))
   .use(locations)
-  // .post("/database/schedule_database_generation", ({ request }) => {
-  //   requestLog(`${chalk.greenBright("Generating Database")}`, request);
-  //   OpenAddressesIntegration.downloadData();
-
-  //   return {
-  //     status: "success",
-  //     message: "Generating Database",
-  //   };
-  // })
   .onError(({ request, code }) => {
     requestLog(`${chalk.redBright.bold(code.toString())}`, request);
   })
