@@ -5,20 +5,23 @@
     "": {
       "name": "enderecos-brasil-api",
       "dependencies": {
-        "chalk": "^5.4.1",
+        "@elysiajs/cors": "^1.4.2",
+        "chalk": "^5.6.2",
         "elysia": "latest",
       },
       "devDependencies": {
-        "@eslint/js": "^9.26.0",
+        "@eslint/js": "^9.39.4",
         "bun-types": "latest",
-        "eslint": "^9.26.0",
+        "eslint": "^9.39.4",
         "eslint-plugin-react": "^7.37.5",
-        "globals": "^16.1.0",
-        "typescript-eslint": "^8.32.0",
+        "globals": "^16.5.0",
+        "typescript-eslint": "^8.60.1",
       },
     },
   },
   "packages": {
+    "@elysiajs/cors": ["@elysiajs/cors@1.4.2", "", { "peerDependencies": { "elysia": ">= 1.4.0" } }, "sha512-FTCcbH35brTLigF1W7BYySRZomgI/dBEMK9BgK9RP9Nez7zmpGh4koL/Yr1BFv8nYz7CfhRvcM8d/c+XnwMaVQ=="],
+
     "@eslint-community/eslint-utils": ["@eslint-community/eslint-utils@4.9.1", "", { "dependencies": { "eslint-visitor-keys": "^3.4.3" }, "peerDependencies": { "eslint": "^6.0.0 || ^7.0.0 || >=8.0.0" } }, "sha512-phrYmNiYppR7znFEdqgfWHXR6NCkZEK7hwWDHZUjit/2/U0r6XvkDl0SYnoM51Hq7FhCGdLDT6zxCCOY1hexsQ=="],
 
     "@eslint-community/regexpp": ["@eslint-community/regexpp@4.12.1", "", {}, "sha512-CCZCDJuduB9OUkFkY2IgppNZMi2lBQgD2qzwXkEia16cge2pijY/aXi96CJMquDMn3nJdlPV1A5KrJEXwfLNzQ=="],

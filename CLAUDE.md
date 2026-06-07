@@ -14,6 +14,7 @@ Estágio: **início de desenvolvimento** (`1.0.0-beta`). Vários módulos ainda 
 |-------------|------------------|
 | Runtime     | Bun (`oven/bun`), tipos via `bun-types@1.3.x` |
 | Framework   | `elysia@1.4.x` |
+| CORS        | `@elysiajs/cors@1.4.x` (plugin oficial, pinado) |
 | Banco       | PostgreSQL 17 (via Docker Compose) |
 | Linguagem   | TypeScript (strict), target ES2021 |
 | Lint        | ESLint 9 (flat config) + typescript-eslint |
@@ -40,6 +41,7 @@ Não existe suíte de testes ainda (`bun test` / script `test` é placeholder). 
 - **Path alias**: `~/*` → `src/*` (definido em [tsconfig.json](tsconfig.json)). Prefira `~/utils/log` a caminhos relativos longos. Hoje o código mistura os dois estilos; padronize para `~/` ao editar.
 - **Utils**: [src/utils/log/](src/utils/log/) — `log()` e `requestLog()` com timestamp pt-BR e cores.
 - **Integrações**: [src/modules/integrations/](src/modules/integrations/) — `openAddresses` e `cepAberto` (stubs). Dados de seed do CEP Aberto em `initialSeed/<uf>/*.zip`.
+- **CORS / API pública**: tratado pelo plugin oficial `@elysiajs/cors` em [src/index.ts](src/index.ts). Hoje a API é **pública** (`origin: true`, só `GET`). Um `onRequest` loga em amarelo (`origem externa | origin: … | ip: …`) quando chega requisição de browser cujo `Origin` não é o front oficial (`FRONTEND_ORIGIN = https://enderecosbrasil.emana.digital`) nem `localhost`/`127.0.0.1` (dev) — serve pra detectar consumidores além do nosso front. **Para restringir depois:** trocar `origin: true` por `origin: FRONTEND_ORIGIN` no `cors()`. Domínios: front `enderecosbrasil.emana.digital`, API `api.enderecosbrasil.emana.digital`. (Scripts/server-to-server não mandam `Origin` e não são afetados por CORS.)
 - **Deploy**: [Dockerfile](Dockerfile) faz `bun build --compile` para um binário único e roda em imagem distroless. [compose.yml](compose.yml) define `web` + `database` (Postgres). `DATABASE_URL` vem por env.
 
 ### Padrões de código (importante)
@@ -56,6 +58,7 @@ Seguir a **Best Practice do Elysia** (`docs/elysia/llms-full.txt`, seção *Best
 - **`Bun.Server` virou genérico** no `bun-types@1.3.x` (`Server<WebSocketData>`) e passou a exigir argumento de tipo — `Bun.Server` puro dá `TS2314`. Solução idiomática: derivar de `Context["server"]` (resolve para `Bun.Server<unknown> | null`). Não use `Bun.Server<unknown>` cravado na mão.
 - **Versões `latest`** no `package.json` deixam o lockfile flutuar; foi a causa raiz da quebra acima.
 - **`cepAberto.tsx`** usa extensão `.tsx` num backend (e o ESLint carrega o plugin React). Provavelmente não intencional — confirme antes de seguir esse padrão em arquivos novos.
+- **Nome do pacote CORS**: as docs (`llms-full.txt`) escrevem `@elysia/cors`, mas o pacote real publicado é **`@elysiajs/cors`** (scope `@elysiajs`). Use o segundo.
 
 ## 📚 Documentação do Elysia (referência principal)
 
