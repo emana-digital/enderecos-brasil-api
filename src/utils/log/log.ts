@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import type { Context } from "elysia";
 
 export const log = (logString: string) => {
   const errorDate = new Date().toLocaleString("pt-BR").split(", ").join(" ");
@@ -8,7 +9,7 @@ export const log = (logString: string) => {
 export const requestLog = (
   logString: string,
   request: Request,
-  server?: Bun.Server | null
+  server?: Context["server"]
 ) => {
   const requestIP = server?.requestIP(request)?.address;
 

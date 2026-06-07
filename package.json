@@ -8,15 +8,15 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "chalk": "^5.4.1",
+    "chalk": "^5.6.2",
     "elysia": "latest"
   },
   "devDependencies": {
-    "@eslint/js": "^9.26.0",
+    "@eslint/js": "^9.39.4",
     "bun-types": "latest",
-    "eslint": "^9.26.0",
+    "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
-    "globals": "^16.1.0",
-    "typescript-eslint": "^8.32.0"
+    "globals": "^16.5.0",
+    "typescript-eslint": "^8.60.1"
   }
 }

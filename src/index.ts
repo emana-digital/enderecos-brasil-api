@@ -7,10 +7,8 @@ import { healthCheck } from "./modules/healthCheck";
 import { log, requestLog } from "./utils/log";
 
 const app = new Elysia()
-  .get("/", ({ request, server }) => healthCheck({ request, server }))
-  .get("/health-check", ({ request, server }) =>
-    healthCheck({ request, server })
-  )
+  .get("/", ({ request }) => healthCheck({ request }))
+  .get("/health-check", ({ request }) => healthCheck({ request }))
   // .post("/database/schedule_database_generation", ({ request }) => {
   //   requestLog(`${chalk.greenBright("Generating Database")}`, request);
   //   OpenAddressesIntegration.downloadData();
