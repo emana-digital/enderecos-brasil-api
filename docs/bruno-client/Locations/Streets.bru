@@ -1,0 +1,22 @@
+meta {
+  name: Streets
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/locations/streets?cityId=8966
+  body: none
+  auth: inherit
+}
+
+params:query {
+  cityId: 8966
+  ~neighborhoodId: 33302
+  ~limit: 500
+  ~offset: 0
+}
+
+docs {
+  Ruas por cidade e/ou bairro. Precisa de `cityId` OU `neighborhoodId` (sem nenhum, volta vazio).
+}

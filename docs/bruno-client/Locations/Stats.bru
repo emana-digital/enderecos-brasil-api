@@ -1,0 +1,16 @@
+meta {
+  name: Stats
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/locations/stats
+  body: none
+  auth: inherit
+}
+
+docs {
+  Estatísticas para dashboards: totais (estados/cidades/bairros/ruas/CEPs),
+  top 10 cidades e CEPs por estado.
+}

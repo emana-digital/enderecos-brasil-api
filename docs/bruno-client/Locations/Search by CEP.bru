@@ -1,0 +1,23 @@
+meta {
+  name: Search by CEP
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/locations/search?q=01310-100
+  body: none
+  auth: inherit
+}
+
+params:query {
+  q: 01310-100
+  ~limit: 20
+}
+
+docs {
+  Mesmo endpoint `/locations/search`, mas com CEP no `q`.
+
+  - CEP completo (`01310-100` / `01310100`) → 1 resultado com rua/bairro/cidade.
+  - CEP parcial (`80010`) → vários CEPs (prefixo), útil pra typeahead.
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Cities
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/locations/cities?uf=PR
+  body: none
+  auth: inherit
+}
+
+params:query {
+  uf: PR
+  ~stateId: 18
+  ~limit: 200
+  ~offset: 0
+}
+
+docs {
+  Cidades filtráveis por `uf` (2 letras) ou `stateId`, com paginação (`limit`/`offset`).
+  Cada item traz o nº de CEPs. Para busca por nome use `/locations/search?tipo=cidade`.
+}

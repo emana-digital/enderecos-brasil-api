@@ -1,0 +1,19 @@
+meta {
+  name: Get CEP
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/locations/cep/:cep
+  body: none
+  auth: inherit
+}
+
+params:path {
+  cep: 01310100
+}
+
+docs {
+  Lookup exato por CEP → rua/bairro/cidade/estado completos. Retorna 404 se não existir.
+}

@@ -1,0 +1,1 @@
+export { locations } from "./locations";

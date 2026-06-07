@@ -1,0 +1,25 @@
+meta {
+  name: Search
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/locations/search?q=Rua Dom João VI,Sarandi
+  body: none
+  auth: inherit
+}
+
+params:query {
+  q: Rua Dom João VI,Sarandi
+  ~tipo: cidade
+  ~uf: PR
+}
+
+docs {
+  Busca de locations por **nome** (rua/bairro/cidade/estado) ou **CEP**.
+  
+  - Nome: `q=Maringá Paraná` — match exato sobe ao topo (acento opcional).
+  - CEP: `q=01310-100` ou parcial `q=80010` (typeahead) → retorna rua/bairro/cidade.
+  - Filtros opcionais: `tipo` (estado|cidade|bairro|rua), `uf` (2 letras), `limit` (1–50).
+}

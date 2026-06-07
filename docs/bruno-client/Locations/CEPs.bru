@@ -1,0 +1,24 @@
+meta {
+  name: CEPs
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{base_url}}/locations/ceps?streetId=782854
+  body: none
+  auth: inherit
+}
+
+params:query {
+  ~cityId: 8966
+  ~neighborhoodId: 33302
+  streetId: 782854
+  ~limit: 200
+  ~offset: 0
+}
+
+docs {
+  CEPs (drill-down) filtrando por `cityId`, `neighborhoodId` e/ou `streetId`, com paginação.
+  Ex.: 782854 = Avenida Paulista, Bela Vista — São Paulo/SP.
+}

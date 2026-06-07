@@ -1,0 +1,21 @@
+meta {
+  name: Neighborhoods
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/locations/neighborhoods?cityId=8966
+  body: none
+  auth: inherit
+}
+
+params:query {
+  cityId: 8966
+  ~limit: 500
+  ~offset: 0
+}
+
+docs {
+  Bairros de uma cidade (`cityId` obrigatório), com nº de CEPs. Ex.: 8966 = São Paulo/SP.
+}

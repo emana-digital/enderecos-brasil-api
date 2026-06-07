@@ -2,13 +2,19 @@ import { Elysia } from "elysia";
 import chalk from "chalk";
 
 // import { OpenAddressesIntegration } from "~/modules/integrations/openAddresses";
-import { healthCheck } from "./modules/healthCheck";
+import { healthCheck } from "~/modules/healthCheck";
+import { locations } from "~/modules/locations";
 
-import { log, requestLog } from "./utils/log";
+import { log, requestLog } from "~/utils/log";
 
 const app = new Elysia()
+  // CORS mínimo para consumo pelo front (GETs). Em produção, considere @elysiajs/cors.
+  .onRequest(({ set }) => {
+    set.headers["access-control-allow-origin"] = "*";
+  })
   .get("/", ({ request }) => healthCheck({ request }))
   .get("/health-check", ({ request }) => healthCheck({ request }))
+  .use(locations)
   // .post("/database/schedule_database_generation", ({ request }) => {
   //   requestLog(`${chalk.greenBright("Generating Database")}`, request);
   //   OpenAddressesIntegration.downloadData();
