@@ -3,6 +3,7 @@ import { Elysia, t } from "elysia";
 import {
   searchLocations,
   getCep,
+  resolvePath,
   listStates,
   listCities,
   listNeighborhoods,
@@ -45,6 +46,27 @@ export const locations = new Elysia({ prefix: "/locations" })
       return result;
     },
     { params: t.Object({ cep: t.String() }) }
+  )
+  // Resolve um caminho de slugs no nível mais profundo informado:
+  //   /resolve/{estado}/{cidade?}/{bairro?}/{rua?}
+  //   /resolve/{estado}/{cidade}/rua/{rua}   (rua agregada a nível de cidade)
+  // Devolve nó + breadcrumb + filhos (+ CEPs na folha). 404 se algo não casar.
+  .get(
+    "/resolve/*",
+    ({ params, set }) => {
+      const segments = params["*"]
+        .split("/")
+        .filter(Boolean)
+        .map((s) => decodeURIComponent(s).toLowerCase());
+
+      const result = resolvePath(segments);
+      if (!result) {
+        set.status = 404;
+        return { error: "Caminho não encontrado" };
+      }
+      return result;
+    },
+    { params: t.Object({ "*": t.String() }) }
   )
   .get("/states", () => listStates())
   .get("/cities", ({ query }) => listCities(query), {

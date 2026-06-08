@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import chalk from "chalk";
-import { normalizeText } from "~/utils/text";
+import { normalizeText, slugify } from "~/utils/text";
 
 const log = console.log;
 
@@ -100,19 +100,22 @@ const SCHEMA = /* sql */ `
   CREATE TABLE states (
     id   INTEGER PRIMARY KEY,
     nome TEXT NOT NULL,
-    uf   TEXT NOT NULL UNIQUE
+    uf   TEXT NOT NULL UNIQUE,
+    slug TEXT  -- preenchido depois da carga (gerarSlugs); índice UNIQUE global
   );
 
   CREATE TABLE cities (
     id       INTEGER PRIMARY KEY,
     nome     TEXT NOT NULL,
-    state_id INTEGER NOT NULL REFERENCES states(id)
+    state_id INTEGER NOT NULL REFERENCES states(id),
+    slug     TEXT  -- UNIQUE(state_id, slug)
   );
 
   CREATE TABLE neighborhoods (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
     nome    TEXT NOT NULL,
     city_id INTEGER NOT NULL REFERENCES cities(id),
+    slug    TEXT,  -- UNIQUE(city_id, slug)
     UNIQUE (nome, city_id)
   );
 
@@ -121,6 +124,7 @@ const SCHEMA = /* sql */ `
     nome            TEXT NOT NULL,
     neighborhood_id INTEGER REFERENCES neighborhoods(id),
     city_id         INTEGER NOT NULL REFERENCES cities(id),
+    slug            TEXT,  -- UNIQUE(city_id, neighborhood_id, slug)
     UNIQUE (nome, neighborhood_id, city_id)
   );
 
@@ -148,6 +152,7 @@ const SCHEMA = /* sql */ `
     tipo            TEXT NOT NULL,
     peso            INTEGER NOT NULL,          -- estado1 cidade2 bairro3 rua/cidade4 rua/bairro5
     relevancia      INTEGER NOT NULL DEFAULT 0, -- nº de CEPs abaixo da entidade (popularidade)
+    slug            TEXT,                      -- slug DA ENTIDADE (folha); preenchido em gerarSlugs
     logradouro      TEXT,                      -- nome da rua (só p/ tipo 'rua'); compõe o label
     cep             TEXT,                      -- CEP único, quando a entidade resolve p/ 1 só
     busca           TEXT NOT NULL,           -- texto indexado pelo FTS5 (com acento)
@@ -174,6 +179,134 @@ const INDEXES = /* sql */ `
   CREATE INDEX idx_addresses_neigh    ON addresses (neighborhood_id);
   CREATE INDEX idx_addresses_logr     ON addresses (logradouro);
 `;
+
+/**
+ * Índices UNIQUE dos slugs — criados SÓ depois de `gerarSlugs` (senão os NULLs
+ * iniciais e/ou colisões quebrariam a criação). Escopo de unicidade (handoff §1):
+ *   state        → global
+ *   city         → dentro do estado
+ *   neighborhood → dentro da cidade
+ *   street       → dentro da cidade E do bairro
+ * (NULL em neighborhood_id conta como distinto no UNIQUE do SQLite; ruas sem
+ * bairro só são acessadas pela rua agregada — ver locations peso 4.)
+ */
+const SLUG_INDEXES = /* sql */ `
+  CREATE UNIQUE INDEX idx_states_slug        ON states (slug);
+  CREATE UNIQUE INDEX idx_cities_slug        ON cities (state_id, slug);
+  CREATE UNIQUE INDEX idx_neighborhoods_slug ON neighborhoods (city_id, slug);
+  CREATE UNIQUE INDEX idx_streets_slug       ON streets (city_id, neighborhood_id, slug);
+`;
+
+/**
+ * Atribui slugs únicos dentro de um escopo, de forma DETERMINÍSTICA e ESTÁVEL.
+ * A ordem de chamada (sempre por id/inserção crescente) decide quem fica com o
+ * slug "limpo"; colisões seguintes recebem sufixo `_2`, `_3`, … e são persistidas,
+ * para a URL nunca mudar. `scope` separa os universos de unicidade (ex.: o id do
+ * estado para cidades). Nome que vira slug vazio (raro) cai em "x".
+ */
+function criarSlugifier() {
+  const usadosPorEscopo = new Map<string, Set<string>>();
+  return (scope: string, nome: string): string => {
+    const base = slugify(nome) || "x";
+    let usados = usadosPorEscopo.get(scope);
+    if (!usados) {
+      usados = new Set();
+      usadosPorEscopo.set(scope, usados);
+    }
+    let slug = base;
+    let n = 2;
+    while (usados.has(slug)) slug = `${base}_${n++}`;
+    usados.add(slug);
+    return slug;
+  };
+}
+
+interface SlugRow {
+  id: number;
+  nome: string;
+  scope: string;
+}
+
+/** Gera slug para uma tabela normalizada, em transação. `select` ordena por id. */
+function gerarSlugsTabela(
+  db: Database,
+  tabela: string,
+  select: string
+): void {
+  const rows = db.query(select).all() as SlugRow[];
+  const slugFor = criarSlugifier();
+  const update = db.query(`UPDATE ${tabela} SET slug = ? WHERE id = ?`);
+  db.transaction(() => {
+    for (const row of rows) update.run(slugFor(row.scope, row.nome), row.id);
+  })();
+}
+
+/**
+ * Preenche `slug` em states/cities/neighborhoods/streets e cria os índices UNIQUE.
+ * Ordem por id = ordem de inserção → resultado reproduzível entre gerações.
+ */
+function gerarSlugs(db: Database): void {
+  gerarSlugsTabela(
+    db,
+    "states",
+    "SELECT id, nome, '' AS scope FROM states ORDER BY id"
+  );
+  gerarSlugsTabela(
+    db,
+    "cities",
+    "SELECT id, nome, state_id AS scope FROM cities ORDER BY state_id, id"
+  );
+  gerarSlugsTabela(
+    db,
+    "neighborhoods",
+    "SELECT id, nome, city_id AS scope FROM neighborhoods ORDER BY city_id, id"
+  );
+  gerarSlugsTabela(
+    db,
+    "streets",
+    `SELECT id, nome, city_id || ':' || COALESCE(neighborhood_id, 0) AS scope
+     FROM streets ORDER BY city_id, neighborhood_id, id`
+  );
+  db.run(SLUG_INDEXES);
+}
+
+/**
+ * Preenche `locations.slug` com o slug DA ENTIDADE folha de cada linha:
+ *   estado/cidade/bairro/rua-por-bairro → copiado da tabela normalizada (1 UPDATE
+ *   cada). A rua AGREGADA por cidade (peso 4) não tem linha em `streets`, então o
+ *   slug é gerado aqui a partir do logradouro, único dentro da cidade (desempate
+ *   estável: mais popular primeiro). É esse slug que o /resolve/.../rua/:slug usa.
+ */
+function gerarSlugsLocations(db: Database): void {
+  db.run(`
+    UPDATE locations SET slug = (SELECT slug FROM states s WHERE s.id = locations.state_id)
+      WHERE tipo = 'estado';
+    UPDATE locations SET slug = (SELECT slug FROM cities c WHERE c.id = locations.city_id)
+      WHERE tipo = 'cidade';
+    UPDATE locations SET slug = (SELECT slug FROM neighborhoods n WHERE n.id = locations.neighborhood_id)
+      WHERE tipo = 'bairro';
+    UPDATE locations SET slug = (SELECT slug FROM streets st WHERE st.id = locations.street_id)
+      WHERE tipo = 'rua' AND peso = 5;
+  `);
+
+  // Rua agregada (peso 4): slug a partir do logradouro, único na cidade.
+  const aggRows = db
+    .query(
+      `SELECT id, city_id AS scope, logradouro AS nome
+       FROM locations
+       WHERE tipo = 'rua' AND peso = 4
+       ORDER BY city_id, relevancia DESC, logradouro, id`
+    )
+    .all() as SlugRow[];
+  const slugFor = criarSlugifier();
+  const update = db.query("UPDATE locations SET slug = ? WHERE id = ?");
+  db.transaction(() => {
+    for (const row of aggRows) update.run(slugFor(row.scope, row.nome), row.id);
+  })();
+
+  // Resolve da rua agregada filtra por (city_id, slug) na tabela locations.
+  db.run("CREATE INDEX idx_locations_city_slug ON locations (city_id, slug);");
+}
 
 /**
  * Popula `locations` a partir das tabelas normalizadas (uma linha por entidade).
@@ -392,6 +525,10 @@ async function generate(): Promise<void> {
   log(chalk.blue("\nCriando índices…"));
   db.run(INDEXES);
 
+  // --- Slugs (URLs semânticas) -----------------------------------------------
+  log(chalk.blue("Gerando slugs (estados/cidades/bairros/ruas)…"));
+  gerarSlugs(db);
+
   // --- Tabela de busca (locations) + índice FTS5 -----------------------------
   log(chalk.blue("Montando tabela de busca (locations)…"));
   // Monta numa staging e copia ordenando por popularidade (relevancia DESC). Assim o
@@ -415,6 +552,10 @@ async function generate(): Promise<void> {
   db.run("DROP TABLE locations_stage;");
   db.run("CREATE INDEX idx_locations_tipo ON locations (tipo);");
   db.run("CREATE INDEX idx_locations_city ON locations (city_id);");
+
+  // Slug folha de cada location (+ slug da rua agregada por cidade, peso 4).
+  log(chalk.blue("Aplicando slugs na tabela de busca (locations)…"));
+  gerarSlugsLocations(db);
 
   // busca_norm: versão sem acento/minúscula de `busca`, para detectar match exato
   // no ranking. (bun:sqlite não tem db.function, então normalizamos em JS.)

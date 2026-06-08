@@ -1,1 +1,1 @@
-export { normalizeText, toFtsQuery } from "./normalize";
+export { normalizeText, toFtsQuery, slugify } from "./normalize";
