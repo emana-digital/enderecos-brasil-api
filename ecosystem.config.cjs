@@ -20,6 +20,12 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: "3145",
+        // Base SQLite gerada offline (database-generation.ts) e copiada UMA VEZ
+        // para o VPS (rsync). É ~930MB e está no .gitignore, então não vem pelo
+        // git checkout — mas por isso mesmo o `git checkout --force` do deploy
+        // também não a apaga: persiste entre deploys neste caminho.
+        SQLITE_PATH:
+          "/var/www/api.enderecosbrasil.emana.digital/database/enderecos-brasil.sqlite",
       },
     },
   ],

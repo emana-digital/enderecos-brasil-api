@@ -4,11 +4,14 @@ import { resolve } from "node:path";
 
 /**
  * Conexão (somente leitura) com a base gerada pelo seed do CEP Aberto.
- * Caminho padrão: <raiz>/database/enderecos-brasil.sqlite (override via SQLITE_PATH).
+ * Caminho padrão: <cwd>/database/enderecos-brasil.sqlite (override via SQLITE_PATH).
+ *
+ * Em produção o binário é compilado (`bun build --compile`), então `import.meta.dir`
+ * aponta para o filesystem virtual do Bun e não serve para localizar arquivos no disco.
+ * Por isso resolvemos a partir do cwd e deixamos produção setar SQLITE_PATH explícito.
  */
 const DEFAULT_DB_PATH = resolve(
-  import.meta.dir,
-  "../../../..",
+  process.cwd(),
   "database/enderecos-brasil.sqlite"
 );
 
