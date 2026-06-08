@@ -41,9 +41,19 @@ ssh-keygen -t ed25519 -C "github-deploy" -f deploy_key
 Feito **uma vez**, antes do primeiro deploy.
 
 ```bash
-# 1) bun, pm2 e git instalados e no PATH do usuário do deploy
-curl -fsSL https://bun.sh/install | bash      # instala em ~/.bun
-bun install -g pm2                              # ou: npm i -g pm2
+# 1) Node, bun, pm2 e git instalados e no PATH do usuário do deploy.
+#    ATENÇÃO: o pm2 é uma app Node e PRECISA de `node` no PATH, mesmo
+#    supervisionando um binário nativo. O interpreter:"none" do ecosystem
+#    controla só como o pm2 roda o NOSSO binário, não o próprio pm2. Sem
+#    node: "/usr/bin/env: 'node': No such file or directory" + exit 127.
+
+# Node via NodeSource (system-wide → vai pra /usr/bin, que JÁ está no PATH da
+# sessão SSH não-interativa; evita o problema de PATH enxuto do bun/pm2):
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+curl -fsSL https://bun.sh/install | bash      # bun em ~/.bun
+bun install -g pm2                              # ou: npm i -g pm2 (agora que há node)
 
 # 2) clonar o projeto na pasta de produção
 sudo mkdir -p /var/www/api.enderecosbrasil.emana.digital
@@ -62,9 +72,12 @@ pm2 save
 > Repositório privado? O VPS precisa conseguir `git fetch` do GitHub — configure
 > uma deploy key (read-only) no usuário ou use clone via HTTPS com token.
 
-> `bun` e `pm2` precisam estar no `PATH` da sessão SSH **não-interativa**. O
-> `scripts/deploy.sh` já adiciona `~/.bun/bin`; se o `pm2` ficar noutro lugar,
-> ajuste o `PATH` lá.
+> `node`, `bun` e `pm2` precisam estar no `PATH` da sessão SSH **não-interativa**.
+> O Node via NodeSource cai em `/usr/bin` (já no PATH). Se você instalou o Node via
+> **nvm**, o `scripts/deploy.sh` já faz `source ~/.nvm/nvm.sh` automaticamente — mas
+> exige um **`nvm alias default <versão>`** definido, senão o nvm não ativa nenhum
+> node ao ser sourçado. O script também adiciona `~/.bun/bin` (bun/pm2) e aborta com
+> mensagem clara se mesmo assim não achar o `node`.
 
 ## 3. Caddy
 
