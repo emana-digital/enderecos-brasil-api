@@ -32,6 +32,12 @@ jobs:
   deploy:
     name: Deploy no VPS (tag ${{ github.ref_name }})
     runs-on: ubuntu-latest
+    # Atrela o job ao environment "Production" (Settings > Environments).
+    # Permite protection rules (required reviewers, wait timer) e secrets/vars
+    # com escopo só de produção.
+    environment:
+      name: Production
+      url: https://api.enderecosbrasil.emana.digital
     timeout-minutes: 15
     steps:
       # Não precisamos de checkout no runner: o build acontece no VPS.
